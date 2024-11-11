@@ -31,15 +31,43 @@ export function Graphic({
 
             uniform vec2 resolution;
             uniform vec3 color;
+            uniform float dt;
             uniform float time;
             uniform vec2 mouse;
 
             const float WAVELENGTH = 0.1;
             const float SLIT_SEPARATION = 0.05;
             const float DISTANCE = 0.4;
+            const int OCTAVES = 8;
 
             float random(vec2 st) {
                 return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+            }
+
+            float noise(vec2 st) {
+                vec2 i = floor(st);
+                vec2 f = fract(st);
+                
+                float a = random(i);
+                float b = random(i + vec2(1.0, 0.0));
+                float c = random(i + vec2(0.0, 1.0));
+                float d = random(i + vec2(1.0, 1.0));
+
+                vec2 u = f * f * (3.0 - 2.0 * f);
+                return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+            }
+
+            float fbm(vec2 st) {
+                float value = 0.0;
+                float amplitude = 0.5;
+                float frequency = 1.0;
+                
+                for(int i = 0; i < OCTAVES; i++) {
+                    value += amplitude * noise(st * frequency);
+                    frequency *= 2.0;
+                    amplitude *= 0.5;
+                }
+                return value;
             }
 
             void main() {
@@ -47,9 +75,14 @@ export function Graphic({
                 float aspect = resolution.x/resolution.y;
                 float y = abs((gl_FragCoord.y / resolution.y) - 0.5);
 
-                vec3 lines = vec3(0., 0., 0.);
-                if (mod(gl_FragCoord.y, 4.0) < 1.) {
-                  lines = vec3(5., 0.1, 0.0);
+                vec3 linesX = vec3(0., 0., 0.);
+                if (mod(gl_FragCoord.y, 4.) < 1.) {
+                  linesX = vec3(5., 0.1, 0.0);
+                }
+
+                vec3 linesY = vec3(0., 0., 0.);
+                if (mod(gl_FragCoord.x, 4.0) < 1.) {
+                  linesY = vec3(0., 0., 5.);
                 }
 
                 vec2 centered;
@@ -59,23 +92,17 @@ export function Graphic({
                     centered = vec2(uv.x - 0.5, (uv.y - 0.5) / aspect);
                 }
 
-                float radius = length(centered * (mouse + vec2(0.4, 0.9)));
+                float radius = length(centered * (mouse + vec2(0.9, 0.9)));
                 float circle = smoothstep(0.3, 0.0, radius);
                 float x = centered.x * 3.0;
                 float pathDiff = SLIT_SEPARATION * x / DISTANCE;
-                float pattern = 0.5 + 0.5 * cos(
-                  2.0 * 3.14159 * pathDiff / WAVELENGTH
-                );
-                float envelope = exp(-radius * radius * 4.0);
-                pattern *= envelope;
-                pattern = pow(pattern, 0.4);
-                pattern = smoothstep(0.2, 1.0, pattern);
+                float pattern = 0.5 + 0.5;
                 vec4 color = mix(
                   vec4(0.), 
-                  vec4(mix(color, vec3(8., 0., 20.), y) + lines, 1.), 
+                  vec4(mix(color, vec3(8., 0., 20.), y) + linesX + linesY, 1.), 
                   pattern * circle * 0.9
                 );
-                float r = random(uv + time / 900.0);
+                float r = random(uv + dt / 900.);
                 color *= 0.95 + r * 0.6;
 
                 gl_FragColor = color;
@@ -149,6 +176,7 @@ export function Graphic({
       uniformLocations: {
         resolution: gl.getUniformLocation(shaderProgram, "resolution"),
         time: gl.getUniformLocation(shaderProgram, "time"),
+        dt: gl.getUniformLocation(shaderProgram, "dt"),
         mouse: gl.getUniformLocation(shaderProgram, "mouse"),
         color: gl.getUniformLocation(shaderProgram, "color"),
       },
@@ -205,7 +233,8 @@ export function Graphic({
         canvas.width,
         canvas.height
       );
-      gl.uniform1f(programInfo.uniformLocations.time, now * 0.001 * timeScale);
+      gl.uniform1f(programInfo.uniformLocations.dt, now * 0.001);
+      gl.uniform1f(programInfo.uniformLocations.time, Date.now());
       gl.uniform2f(programInfo.uniformLocations.mouse, mouseX, mouseY);
       gl.uniform3f(programInfo.uniformLocations.color, r, g, b);
 
