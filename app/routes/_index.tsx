@@ -1,13 +1,13 @@
-import type { MetaFunction } from "@remix-run/node";
-import { Graphic } from "~/components/graphic";
+import type { Route } from "./+types/_index";
+import { Welcome } from "../welcome/welcome";
 
-export const meta: MetaFunction = () => {
+export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
+    { title: "New React Router App" },
+    { name: "description", content: "Welcome to React Router!" },
   ];
-};
+}
 
-export default function Index() {
-  return <Graphic />;
+export default function Home() {
+  return <Welcome />;
 }

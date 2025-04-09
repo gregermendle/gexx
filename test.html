@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Glass Prism Shader</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: black;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+
+    <script id="vertexShader" type="x-shader/x-vertex">
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    </script>
+
+    <script id="fragmentShader" type="x-shader/x-fragment">
+      precision highp float;
+
+      uniform vec2 iResolution;
+      uniform float iTime;
+      varying vec2 vUv;
+
+      #define MAX_STEPS 100
+      #define MIN_DIST 0.001
+      #define MAX_DIST 5.0
+
+      float sdBeveledBox(vec3 p, vec3 b, float r) {
+          vec3 q = abs(p) - b;
+          return length(max(q, 0.0)) - r;
+      }
+
+      float map(vec3 p) {
+          return sdBeveledBox(p, vec3(0.5), 0.1);
+      }
+
+      vec3 getNormal(vec3 p) {
+          float e = 0.001;
+          vec2 h = vec2(e, 0.0);
+          return normalize(vec3(
+              map(p + h.xyy) - map(p - h.xyy),
+              map(p + h.yxy) - map(p - h.yxy),
+              map(p + h.yyx) - map(p - h.yyx)
+          ));
+      }
+
+      float raymarch(vec3 ro, vec3 rd, out vec3 p) {
+          float t = 0.0;
+          for (int i = 0; i < MAX_STEPS; i++) {
+              p = ro + rd * t;
+              float d = map(p);
+              if (d < MIN_DIST) break;
+              t += d;
+              if (t >= MAX_DIST) break;
+          }
+          return t;
+      }
+
+      mat3 rotateY(float a) {
+          float c = cos(a), s = sin(a);
+          return mat3(
+              c, 0.0, -s,
+              0.0, 1.0, 0.0,
+              s, 0.0, c
+          );
+      }
+
+      mat3 rotateX(float a) {
+          float c = cos(a), s = sin(a);
+          return mat3(
+              1.0, 0.0, 0.0,
+              0.0, c, -s,
+              0.0, s, c
+          );
+      }
+
+      void main() {
+          vec2 uv = vUv * 2.0 - 1.0;
+          uv.x *= iResolution.x / iResolution.y;
+
+          // Camera setup
+          vec3 ro = vec3(0.0, 0.0, 2.5);
+          vec3 rd = normalize(vec3(uv, -1.5));
+
+          float t = iTime * 0.6;
+          mat3 rot = rotateY(t) * rotateX(t * 0.8);
+          ro = rot * ro;
+          rd = rot * rd;
+
+          vec3 p;
+          float d = raymarch(ro, rd, p);
+
+          vec3 col = vec3(0.0);
+          if (d < MAX_DIST) {
+              vec3 normal = getNormal(p);
+
+              // Chromatic dispersion: separate RGB IORs
+              float iorR = 1.01;
+              float iorG = 1.02;
+              float iorB = 1.03;
+
+              vec3 refractR = refract(rd, normal, 1.0 / iorR);
+              vec3 refractG = refract(rd, normal, 1.0 / iorG);
+              vec3 refractB = refract(rd, normal, 1.0 / iorB);
+
+              // Inner bounce color sampling (simulate caustics)
+              vec3 pr, pg, pb;
+              raymarch(p + refractR * 0.01, refractR, pr);
+              raymarch(p + refractG * 0.01, refractG, pg);
+              raymarch(p + refractB * 0.01, refractB, pb);
+
+              float brightness = 1.5;
+              col.r = brightness * exp(-length(pr - p));
+              col.g = brightness * exp(-length(pg - p));
+              col.b = brightness * exp(-length(pb - p));
+
+              // Fresnel reflection
+              float fresnel = pow(1.0 - dot(normal, -rd), 3.0);
+              col += vec3(fresnel * 0.2);
+          }
+
+          gl_FragColor = vec4(col, 1.0);
+      }
+    </script>
+
+    <script>
+      const scene = new THREE.Scene();
+      const camera = new THREE.Camera();
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      const uniforms = {
+        iTime: { value: 0 },
+        iResolution: {
+          value: new THREE.Vector2(window.innerWidth, window.innerHeight),
+        },
+      };
+
+      const material = new THREE.ShaderMaterial({
+        vertexShader: document.getElementById("vertexShader").textContent,
+        fragmentShader: document.getElementById("fragmentShader").textContent,
+        uniforms: uniforms,
+      });
+
+      const geometry = new THREE.PlaneGeometry(2, 2);
+      const quad = new THREE.Mesh(geometry, material);
+      scene.add(quad);
+
+      function animate(time) {
+        uniforms.iTime.value = time * 0.001;
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      }
+
+      window.addEventListener("resize", () => {
+        uniforms.iResolution.value.set(window.innerWidth, window.innerHeight);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      animate();
+    </script>
+  </body>
+</html>
