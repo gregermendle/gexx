@@ -24,6 +24,7 @@ import {
   SidebarMenuItem,
 } from "~/components/ui/sidebar";
 import Logo from "./ui/logo";
+import { useRequireUser, useUser } from "~/hooks/use-user";
 
 const data = {
   user: {
@@ -80,6 +81,8 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const user = useRequireUser();
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -104,7 +107,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   );

@@ -24,6 +24,12 @@ export async function requireUser(request: Request): Promise<User> {
   return user;
 }
 
+export async function optionalUser(request: Request): Promise<User | null> {
+  let session = await sessionStorage.getSession(request.headers.get("cookie"));
+  let user = session.get("user");
+  return user ?? null;
+}
+
 export const authMiddleware: Route.unstable_MiddlewareFunction = async (
   { request, params, context },
   next
