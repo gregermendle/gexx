@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
+import { passwords, users, type User } from "~/db/schema";
 import db from "~/services/db.server";
-import { users, passwords, type User } from "~/db/schema";
 
 export async function getUserById(id: User["id"]) {
   const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
@@ -32,6 +32,22 @@ export async function createUser(
 
     return user;
   });
+}
+
+export async function updateUser(
+  userId: string,
+  { email, name }: Pick<User, "email" | "name">
+) {
+  const [updated] = await db
+    .update(users)
+    .set({
+      email,
+      name,
+    })
+    .where(eq(users.id, userId))
+    .returning();
+
+  return updated;
 }
 
 export async function deleteUserByEmail(email: User["email"]) {

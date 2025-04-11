@@ -1,16 +1,18 @@
+import { redirect } from "react-router";
 import { LoginForm } from "~/components/login-form";
 import Logo from "~/components/ui/logo";
-import type { Route } from "./+types/login";
-import { redirect } from "react-router";
-import * as sessionStorage from "~/services/session.server";
 import { authenticator } from "~/services/auth.server";
+import * as sessionStorage from "~/services/session.server";
+import type { Route } from "./+types/login";
 
 export async function action({ request }: Route.ActionArgs) {
   let user = await authenticator.authenticate("user-pass", request);
   let session = await sessionStorage.getSession(request.headers.get("cookie"));
   session.set("user", user);
+  let url = new URL(request.url);
+  let redirectTo = url.searchParams.get("redirect") ?? "/dashboard";
 
-  throw redirect("/dashboard", {
+  throw redirect(redirectTo, {
     headers: { "Set-Cookie": await sessionStorage.commitSession(session) },
   });
 }

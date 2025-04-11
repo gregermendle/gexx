@@ -1,17 +1,9 @@
-import { useLoaderData } from "react-router";
 import { ChartAreaInteractive } from "~/components/chart-area-interactive";
-import { DataTable } from "~/components/data-table";
+import InventoryTable from "~/components/inventory-table";
 import { SectionCards } from "~/components/section-cards";
 import { SiteHeader } from "~/components/site-header";
 
-export async function loader() {
-  const data = await import("~/dashboard/data.json");
-  return data.default;
-}
-
 export default function Dashboard() {
-  const data = useLoaderData<typeof loader>();
-
   return (
     <>
       <SiteHeader title="Dashboard" />
@@ -22,7 +14,9 @@ export default function Dashboard() {
             <div className="px-4 lg:px-6">
               <ChartAreaInteractive />
             </div>
-            <DataTable data={data} />
+            <div className="px-4 lg:px-6">
+              <InventoryTable />
+            </div>
           </div>
         </div>
       </div>

@@ -16,3 +16,8 @@ export const signupSchema = z
     message: "Passwords don't match",
     path: ["confirmPassword"], // This specifies which field the error is attached to
   });
+
+export const accountSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+});

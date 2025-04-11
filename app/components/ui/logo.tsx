@@ -1,16 +1,23 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { Environment, OrbitControls, RoundedBox } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Environment, RoundedBox } from "@react-three/drei";
+import { useEffect, useRef } from "react";
 import type { Mesh } from "three";
 
 const DITHER_PIXEL_SIZE = 1;
 const DARK_COLOR = [23, 23, 23] as const;
 
-function CanvasDithering({ size }: { size: number }) {
+function CanvasDithering({
+  size,
+  onFinish,
+}: {
+  size: number;
+  onFinish?: () => void;
+}) {
   const { gl } = useThree();
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const finished = useRef(false);
 
   useEffect(() => {
     const overlayCanvas = document.createElement("canvas");
@@ -127,6 +134,7 @@ function CanvasDithering({ size }: { size: number }) {
     }
 
     ctx.putImageData(imageData, 0, 0);
+    if (!finished.current) onFinish?.();
   });
 
   return null;
@@ -161,7 +169,13 @@ function Cube() {
   );
 }
 
-export default function Logo({ size }: { size: number }) {
+export default function Logo({
+  size,
+  onLoad,
+}: {
+  size: number;
+  onLoad?: () => void;
+}) {
   return (
     <div className="flex items-center justify-center">
       <div
@@ -197,7 +211,7 @@ export default function Logo({ size }: { size: number }) {
             enableDamping
             dampingFactor={0.05}
           />
-          <CanvasDithering size={size} />
+          <CanvasDithering size={size} onFinish={onLoad} />
         </Canvas>
       </div>
     </div>
